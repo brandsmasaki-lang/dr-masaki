@@ -792,7 +792,8 @@ function placePad() {
   // iPhone の screen.height は横向きでも「縦の長さ」のままなので、いまの向きに合わせた画面の高さを使う
   const scrH = innerWidth > innerHeight ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
   const h = standalone ? Math.min(Math.max(base, scrH - 60), scrH) : base;
-  pad.style.height = Math.round(h + padShift) + 'px';
+  // 「画面ボタンの高さ」の調整は縦向きだけ。横向きはボタンが画面の外に出ないよう、調整なしで置く
+  pad.style.height = Math.round(h + (document.body.classList.contains('land') ? 0 : padShift)) + 'px';
 }
 // ボタンの上下位置の手動調整（プラスで下へ）。端末によって画面の下端の扱いが違うため
 let padShift = 0;
