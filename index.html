@@ -111,6 +111,9 @@
   #rot.on{background:rgba(124,242,200,.45)}
   #pauseBtn{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 178);
     width:calc(var(--u) * 64);height:calc(var(--u) * 50);padding:0;pointer-events:auto;touch-action:none;font-size:calc(var(--u) * 20);border-radius:12px;opacity:.9}
+  #musicBtn{position:absolute;right:calc(max(14px,env(safe-area-inset-right,0px)) + var(--u) * 72);bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 178);
+    width:calc(var(--u) * 56);height:calc(var(--u) * 50);padding:0;pointer-events:auto;touch-action:none;font-size:calc(var(--u) * 20);border-radius:12px;opacity:.9}
+  #musicBtn.off{opacity:.45;text-decoration:line-through}
 
   #msgImg{width:210px;height:auto;max-width:100%;transform-origin:50% 90%;animation:plop .7s cubic-bezier(.2,1.4,.4,1) both}
   @keyframes plop{0%{transform:translateY(-60px) rotate(-12deg) scale(.6);opacity:0}60%{transform:translateY(6px) rotate(4deg) scale(1.04);opacity:1}100%{transform:none}}
@@ -131,6 +134,7 @@
         <div id="dpad"><div id="cross"><i class="u">▲</i><i class="l">◀</i><i class="c"></i><i class="r">▶</i><i class="d">▼</i></div></div>
         <div id="rot" aria-label="回転">⟳</div>
         <button id="pauseBtn" aria-label="一時停止">II</button>
+        <button id="musicBtn" aria-label="音楽のオン・オフ">♪</button>
       </div>
 
       <div class="ov" id="menu">
@@ -154,7 +158,7 @@
           <div class="lbl">画面ボタンの位置</div>
           <div class="row"><button class="step wide" id="padUp" aria-label="画面ボタンを上へ">▲ 上へ</button><button class="step wide" id="padDown" aria-label="画面ボタンを下へ">▼ 下へ</button></div>
         </div>
-        <div class="keys">←→ 移動　↓ 落とす　Z・X・↑・スペース 回転　P 一時停止</div>
+        <div class="keys">←→ 移動　↓ 落とす　Z・X・↑・スペース 回転　P 一時停止　M 音楽</div>
         <div class="topRec">ベスト <b id="topBest">0</b>　／　最長連続 <b id="topLong">0:00</b></div>
       </div>
 
@@ -777,9 +781,13 @@ function pause() {
   if (!['play', 'throw', 'clearing', 'falling'].includes(state)) return;
   prevState = state; state = 'paused'; bgmStop();
   for (const k in held) held[k] = false;
-  showMsg('一時停止', '', [['つづける', resume, true], ['やめる', quitRun]]);
+  const mb = () => [BGM.sel ? '音楽をオフ' : '音楽をオン', () => { toggleMusic(); pauseMenu(); }];
+  const pauseMenu = () => showMsg('一時停止', '', [['つづける', resume, true], mb(), ['やめる', quitRun]]);
+  pauseMenu();
 }
 function resume() { hideAll(); state = prevState || 'play'; bgmPlay('play'); }
+// 音楽のオン・オフ（オンに戻すと前に選んでいた曲）。プレイ中の♪ボタン・一時停止・Mキーから
+function toggleMusic() { if (BGM.sel) { BGM.last = BGM.sel; setBgmSel(0); } else { setBgmSel(BGM.last || 1); if (state === 'paused') bgmStop(); } }
 function quitRun() { saveRun(true); toMenu(); }
 
 // レベルは「数字を入力」「−／＋」「スライダー」のどれでも選べて、3つは常に同じ値になる
@@ -876,6 +884,8 @@ const rot = $('rot');
 rot.addEventListener('pointerdown', e => { e.preventDefault(); queue.push('ROT'); rot.classList.add('on'); });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => rot.addEventListener(ev, () => rot.classList.remove('on')));
 $('pauseBtn').addEventListener('pointerdown', e => { e.preventDefault(); pause(); });
+$('musicBtn').addEventListener('pointerdown', e => { e.preventDefault(); toggleMusic(); });
+document.addEventListener('keydown', e => { if ((e.key === 'm' || e.key === 'M') && document.activeElement.tagName !== 'INPUT') toggleMusic(); });
 
 // スマホでボタンを連打したときに画面が拡大しないようにする
 const padEl = $('pad');
@@ -1252,7 +1262,8 @@ function se(kind, n) {
   if (kind === 'chain') { const b = 660 * Math.pow(2, Math.min(n - 2, 8) * 2 / 12); tone(b, t, 0.1, 'square', 0.3); tone(b * 1.5, t + 0.07, 0.22, 'square', 0.3); tone(b * 2, t + 0.07, 0.22, 'triangle', 0.25); }
 }
 function setBgmSel(v) {
-  BGM.sel = v; audioSave();
+  BGM.sel = v; if (v) BGM.last = v; audioSave();
+  const mbtn = $('musicBtn'); if (mbtn) { mbtn.classList.toggle('off', !v); mbtn.setAttribute('aria-label', v ? '音楽をオフにする' : '音楽をオンにする'); }
   document.querySelectorAll('#bgmSel button').forEach(x => x.classList.toggle('sel', +x.dataset.b === v));
   if (!v) bgmStop(); else { const sc = bgmScene(); if (sc) { if (sc === 'play') BGM.cur = null; bgmPlay(sc === 'title' ? 'title' : 'play'); } else if (state === 'title') bgmPlay('title'); }
 }
