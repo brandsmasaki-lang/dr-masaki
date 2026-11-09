@@ -781,6 +781,7 @@ function fit() {
   ctx.setTransform(cv.width / LW, 0, 0, cv.height / LH, 0, 0);
 }
 addEventListener('resize', fit);
+addEventListener('orientationchange', () => setTimeout(fit, 300));
 // 操作パネルの高さを「実際に見えている画面の高さ」に合わせる。
 // ホーム画面から起動したiPhoneでは、画面の下端より上で止まることがあるので画面全体の高さを使う
 function placePad() {
@@ -788,7 +789,9 @@ function placePad() {
   const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   const vv = window.visualViewport;
   const base = vv ? vv.height + vv.offsetTop : innerHeight;
-  const h = standalone ? Math.max(base, screen.height - 60) : base;
+  // iPhone の screen.height は横向きでも「縦の長さ」のままなので、いまの向きに合わせた画面の高さを使う
+  const scrH = innerWidth > innerHeight ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+  const h = standalone ? Math.min(Math.max(base, scrH - 60), scrH) : base;
   pad.style.height = Math.round(h + padShift) + 'px';
 }
 // ボタンの上下位置の手動調整（プラスで下へ）。端末によって画面の下端の扱いが違うため
