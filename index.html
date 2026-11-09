@@ -66,6 +66,15 @@
   button.step{width:44px;height:44px;padding:0;font-size:24px;line-height:1}
   button.step.wide{width:auto;padding:0 16px;font-size:15px}
   .topRec{font-size:12px;color:var(--sub)}
+  .ov button{touch-action:manipulation} /* すばやく続けて押してもズームに取られないように */
+  #menu,#settings{background:color-mix(in srgb,var(--bg) 97%,transparent);gap:18px}
+  #menu .logo{margin-bottom:6px}
+  #startBtn{font-size:24px;padding:14px 56px;margin-top:6px}
+  button.sub2{min-width:110px}
+  .setList{display:flex;flex-direction:column;gap:14px;width:100%;max-width:340px}
+  .setRow{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+  .setName{font:13px var(--font-display);color:var(--sub);text-align:left}
+  .seg{flex-wrap:nowrap;gap:6px}.seg button{flex:1;padding-left:4px;padding-right:4px}
   .topRec b{font:13px var(--font-display);font-variant-numeric:tabular-nums;color:var(--text)}
   .keys{font-size:11px;color:var(--sub);line-height:1.7}
 
@@ -147,19 +156,21 @@
           <div class="lbl">スピード</div>
           <div class="row" id="spd"><button data-s="0" class="sel">LOW</button><button data-s="1">MED</button><button data-s="2">HI</button></div>
         </div>
-        <div>
-          <div class="lbl">BGM</div>
-          <div class="row" id="bgmSel"><button data-b="0">オフ</button><button data-b="1">ノリノリ</button><button data-b="2">まったり</button></div>
-        </div>
         <button class="big" id="startBtn">スタート</button>
-        <div class="row"><button id="recBtn">記録を見る</button><button id="padBtn">画面ボタン：自動</button></div>
-        <div class="row"><button id="seBtn">効果音：オン</button></div>
-        <div>
-          <div class="lbl">画面ボタンの位置</div>
-          <div class="row"><button class="step wide" id="padUp" aria-label="画面ボタンを上へ">▲ 上へ</button><button class="step wide" id="padDown" aria-label="画面ボタンを下へ">▼ 下へ</button></div>
-        </div>
-        <div class="keys">←→ 移動　↓ 落とす　Z・X・↑・スペース 回転　P 一時停止　M 音楽</div>
+        <div class="row"><button class="sub2" id="recBtn">記録</button><button class="sub2" id="setBtn">設定</button></div>
         <div class="topRec">ベスト <b id="topBest">0</b>　／　最長連続 <b id="topLong">0:00</b></div>
+      </div>
+
+      <div class="ov" id="settings" hidden>
+        <h2>設定</h2>
+        <div class="setList">
+          <div class="setRow"><div class="setName">音楽</div><div class="row seg" id="bgmSel"><button data-b="0">オフ</button><button data-b="1">ノリノリ</button><button data-b="2">まったり</button></div></div>
+          <div class="setRow"><div class="setName">効果音</div><div class="row seg" id="seSel"><button data-v="1">オン</button><button data-v="0">オフ</button></div></div>
+          <div class="setRow"><div class="setName">画面ボタン</div><div class="row seg" id="padSel"><button data-p="auto">自動</button><button data-p="on">いつも</button><button data-p="off">なし</button></div></div>
+          <div class="setRow"><div class="setName">画面ボタンの高さ</div><div class="row seg"><button id="padUp" aria-label="画面ボタンを上へ">▲ 上へ</button><button id="padDown" aria-label="画面ボタンを下へ">▼ 下へ</button></div></div>
+        </div>
+        <p class="keys">キーボード：←→ 移動　↓ 落とす　Z・X・↑・スペース 回転<br>P 一時停止　M 音楽オン・オフ</p>
+        <button class="big" id="setClose">もどる</button>
       </div>
 
       <div class="ov" id="msg" hidden>
@@ -758,7 +769,7 @@ function loop(now) {
 }
 
 /* ================= メニュー ================= */
-function hideAll() { ['menu', 'msg', 'rec'].forEach(id => $(id).hidden = true); updatePad(); }
+function hideAll() { ['menu', 'settings', 'msg', 'rec'].forEach(id => $(id).hidden = true); updatePad(); }
 function showMsg(title, html, btns, withImg = false) {
   hideAll();
   $('msgTitle').textContent = title; $('msgText').innerHTML = html;
@@ -831,7 +842,7 @@ function press(code) {
 function release(code) { held[code] = false; }
 const ROT_KEYS = ['KeyZ', 'KeyX', 'ArrowUp', 'Space'];
 addEventListener('keydown', e => {
-  const playing = $('menu').hidden && $('msg').hidden && $('rec').hidden;
+  const playing = $('menu').hidden && $('settings').hidden && $('msg').hidden && $('rec').hidden;
   if (playing && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
   if (e.code === 'KeyP' || e.code === 'Escape') {
     if (state === 'paused') resume(); else pause();
@@ -915,13 +926,15 @@ const isTouchDevice = () =>
 let touchMode = isTouchDevice();
 let padMode = 'auto';
 try { padMode = localStorage.getItem('drMasakiPad') || 'auto'; } catch (e) {}
-const PAD_LABEL = { auto: '画面ボタン：自動', on: '画面ボタン：表示', off: '画面ボタン：なし' };
-function setPadLabel() { $('padBtn').textContent = PAD_LABEL[padMode]; }
-$('padBtn').addEventListener('click', () => {
-  padMode = { auto: 'on', on: 'off', off: 'auto' }[padMode];
+function setPadLabel() { document.querySelectorAll('#padSel button').forEach(x => x.classList.toggle('sel', x.dataset.p === padMode)); }
+document.querySelectorAll('#padSel button').forEach(b => b.addEventListener('click', () => {
+  padMode = b.dataset.p;
   try { localStorage.setItem('drMasakiPad', padMode); } catch (e) {}
-  setPadLabel();
-});
+  setPadLabel(); updatePad();
+}));
+// 設定画面（メニューの「設定」から）
+$('setBtn').addEventListener('click', () => { hideAll(); $('settings').hidden = false; updatePad(); $('setClose').focus(); });
+$('setClose').addEventListener('click', () => toMenu());
 setPadLabel();
 // 位置を動かしている間はボタンを見せて、どこに来るか確かめられるようにする
 let shiftPreview = null;
@@ -942,8 +955,8 @@ addEventListener('touchstart', markTouch, { passive: true, capture: true });
 addEventListener('pointerdown', e => { if (e.pointerType === 'touch') markTouch(); }, { capture: true });
 let lastShown = null;
 function updatePad() {
-  if (padShown() !== lastShown) { lastShown = padShown(); fit(); }
-  const any = !$('menu').hidden || !$('msg').hidden || !$('rec').hidden;
+  if (padShown() !== lastShown && $('settings').hidden) { lastShown = padShown(); fit(); } // 設定画面の中では画面を動かさず、閉じたときに合わせる
+  const any = !$('menu').hidden || !$('settings').hidden || !$('msg').hidden || !$('rec').hidden;
   const show = padMode === 'on' || (padMode === 'auto' && touchMode);
   $('pad').hidden = !show || any;
 }
@@ -1273,9 +1286,9 @@ function setBgmSel(v) {
   document.querySelectorAll('#bgmSel button').forEach(x => x.classList.toggle('sel', +x.dataset.b === v));
   if (!v) bgmStop(); else { const sc = bgmScene(); if (sc) { if (sc === 'play') BGM.cur = null; bgmPlay(sc === 'title' ? 'title' : 'play'); } else if (state === 'title') bgmPlay('title'); }
 }
-function setSe(on) { BGM.se = on; audioSave(); $('seBtn').textContent = on ? '効果音：オン' : '効果音：オフ'; $('seBtn').classList.toggle('sel', on); }
+function setSe(on) { BGM.se = on; audioSave(); document.querySelectorAll('#seSel button').forEach(x => x.classList.toggle('sel', (x.dataset.v === '1') === on)); }
 document.querySelectorAll('#bgmSel button').forEach(b => b.addEventListener('click', () => { setBgmSel(+b.dataset.b); if (state === 'title' && BGM.sel) { BGM.cur = null; bgmPlay('title'); } }));
-$('seBtn').addEventListener('click', () => { setSe(!BGM.se); if (BGM.se) se('chain', 2); });
+document.querySelectorAll('#seSel button').forEach(b => b.addEventListener('click', () => { setSe(b.dataset.v === '1'); if (BGM.se) se('chain', 2); }));
 setBgmSel(BGM.sel); setSe(BGM.se);
 // スマホは画面をさわるまで音が出せないので、最初のタッチで鳴らしはじめる
 function bgmWake() { if (!BGM.sel && !BGM.se) return; const c = bgmCtx(); if (!c) return; if (c.state !== 'running') c.resume().catch(() => {}); if (BGM.sel && !BGM.cur) { const sc = bgmScene(); if (sc) bgmPlay(sc); } }
