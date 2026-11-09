@@ -43,9 +43,9 @@
   #shell{flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center}
   #stage{position:relative;overflow:hidden}
   #world{position:absolute;left:0;top:0;width:360px;height:600px;transform-origin:0 0}
-  #cv{position:absolute;inset:0;width:360px;height:600px;display:block}
+  #cv{position:absolute;inset:0;width:360px;height:100%;display:block}
 
-  .ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  .ov{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
     background:color-mix(in srgb,var(--bg) 88%,transparent);text-align:center;padding:20px}
   .ov h2{margin:0;font:28px/1.2 var(--font-display);color:var(--accent);text-wrap:balance}
   .ov p{margin:0;color:var(--sub);font-size:13px;line-height:1.7}
@@ -99,7 +99,7 @@
   .recfoot{position:sticky;bottom:-20px;background:var(--bg);padding:10px 0;display:flex;justify-content:center}
 
   /* スマホ操作パネル：画面のいちばん下に固定し、盤面の下の方に重ねる。--s はゲーム画面の拡大率 */
-  #pad{position:fixed;left:0;right:0;top:0;height:100vh;height:100lvh;pointer-events:none;z-index:5;--u:calc(var(--s,1) * 1px)}
+  #pad{position:fixed;left:0;right:0;top:0;height:100vh;height:100lvh;pointer-events:none;z-index:5;--u:var(--pu,1px)}
   #pad[hidden]{display:none!important}
   /* #dpad は指が当たる範囲（見た目より一回り広い）。中の #cross が見える十字キー */
   #dpad{position:absolute;left:calc(max(4px,env(safe-area-inset-left,0px)) - var(--u) * 28);bottom:calc(env(safe-area-inset-bottom,0px) + 4px - var(--u) * 28);
@@ -113,15 +113,14 @@
   #dpad .r{left:66.66%;top:33.33%;border-radius:0 8px 8px 0}
   #dpad .d{left:33.33%;top:66.66%;border-radius:0 0 8px 8px}
   #dpad .c{left:33.33%;top:33.33%;border:none;background:rgba(255,255,255,.12)}
-  #rot{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 14);
+  #rot{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 20);
     width:calc(var(--u) * 80);height:calc(var(--u) * 80);border-radius:50%;pointer-events:auto;touch-action:none;
     background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.4);color:rgba(255,255,255,.85);
     display:flex;align-items:center;justify-content:center;font-size:calc(var(--u) * 34)}
   #rot.on{background:rgba(124,242,200,.45)}
-  #pauseBtn{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 118);
-    width:calc(var(--u) * 64);height:calc(var(--u) * 50);padding:0;pointer-events:auto;touch-action:none;font-size:calc(var(--u) * 20);border-radius:12px;opacity:.9}
-  #musicBtn{position:absolute;right:calc(max(14px,env(safe-area-inset-right,0px)) + var(--u) * 72);bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 118);
-    width:calc(var(--u) * 56);height:calc(var(--u) * 50);padding:0;pointer-events:auto;touch-action:none;font-size:calc(var(--u) * 20);border-radius:12px;opacity:.9}
+  /* ♪ と II はゲーム画面の中、LIFE の下（ゲームの座標で置く） */
+  .gbtn{position:absolute;top:376px;width:44px;height:36px;padding:0;font-size:17px;border-radius:10px;touch-action:none;z-index:2}
+  #musicBtn{left:258px}#pauseBtn{left:306px}
   #musicBtn.off{opacity:.45;text-decoration:line-through}
 
   #msgImg{width:210px;height:auto;max-width:100%;transform-origin:50% 90%;animation:plop .7s cubic-bezier(.2,1.4,.4,1) both}
@@ -138,12 +137,12 @@
   <div id="stage">
     <div id="world">
       <canvas id="cv"></canvas>
+      <button id="musicBtn" class="gbtn" aria-label="音楽のオン・オフ">♪</button>
+      <button id="pauseBtn" class="gbtn" aria-label="一時停止">II</button>
 
       <div id="pad" hidden>
         <div id="dpad"><div id="cross"><i class="u">▲</i><i class="l">◀</i><i class="c"></i><i class="r">▶</i><i class="d">▼</i></div></div>
         <div id="rot" aria-label="回転">⟳</div>
-        <button id="pauseBtn" aria-label="一時停止">II</button>
-        <button id="musicBtn" aria-label="音楽のオン・オフ">♪</button>
       </div>
 
       <div class="ov" id="menu">
@@ -189,8 +188,8 @@
 <script>
 (() => {
 /* ================= 基本設定 ================= */
-const LW = 360, LH = 600;
-const W = 8, H = 16, CS = 28, BX = 14, BY = 136;
+const LW = 360; let LH = 600;
+const W = 8, H = 16, BY = 136; let CS = 28, BX = 14; // CS（ますの大きさ）とBXは画面に合わせて fit() で決める
 const COLORS = [
   { main:'#ff4f6e', dark:'#9e1534', light:'#ffc0cc', name:'赤' },
   { main:'#ffd447', dark:'#a07a00', light:'#fff1b8', name:'黄' },
@@ -718,9 +717,10 @@ function draw() {
   drawBox(256, 218, 96, 46, rm > 1 ? 'SPEED ×' + rm.toFixed(2) : 'SPEED', SPEED_NAMES[speedSel]);
   drawBox(256, 270, 96, 46, 'VIRUS', String(vleft));
   drawBox(256, 322, 96, 46, 'LIFE', String(lives));
+  if (!showLens) return;
   ctx.fillStyle = '#161a36'; ctx.strokeStyle = '#2d3366'; ctx.lineWidth = 1.5;
-  rr(ctx, 256, 374, 96, 112, 48); ctx.fill(); ctx.stroke();
-  const spots = [[284, 408], [324, 408], [304, 450]];
+  rr(ctx, 256, 422, 96, 112, 48); ctx.fill(); ctx.stroke();
+  const spots = [[284, 456], [324, 456], [304, 498]];
   for (let i = 0; i < 3; i++) {
     const left = grid ? virusCount(i) : 1;
     const dance = state === 'play' || state === 'throw' ? Math.sin(frame / 8 + i * 2) * 3 : 0;
@@ -730,13 +730,23 @@ function draw() {
 
 /* ================= 画面サイズ ================= */
 let scale = 1;
-const PAD_H = 212;
+const PAD_H = 206; let showLens = true;
 function padShown() { return padMode === 'on' || (padMode === 'auto' && touchMode); }
 function fit() {
   const sh = $('shell');
   // 画面ボタンを出すときは、その分（ゲームの単位で PAD_H）を下にあけて、ボタンが瓶やウイルスに重ならないようにする
-  const R = padShown() ? PAD_H : 0;
-  scale = Math.max(0.3, Math.min(sh.clientWidth / LW, sh.clientHeight / (LH + R)));
+  // 横は画面いっぱい（スマホ）。縦に余った分はゲーム画面をのばして使い、
+  // 画面ボタンを出すときは、ます（CS）を小さくして瓶の下に十字キーの場所をつくる
+  const vw = sh.clientWidth, vh = sh.clientHeight;
+  scale = Math.max(0.3, Math.min(vw / LW, vh / 600));
+  const pu = Math.min(scale, 1.25); document.documentElement.style.setProperty('--pu', pu + 'px');
+  LH = Math.max(600, Math.floor(vh / scale));
+  const padW = padShown() ? (PAD_H * pu - padShift) / scale : 0;
+  CS = Math.max(14, Math.min(28, Math.floor((LH - padW - BY - 14) / H)));
+  BX = Math.round((246 - W * CS) / 2);
+  SPAWN_C[0] = BX + 4 * CS; SPAWN_C[1] = BY + CS / 2;
+  showLens = !padShown() || 536 <= LH - (100 * pu - padShift) / scale;
+  world.style.height = LH + 'px';
   stage.style.width = LW * scale + 'px'; stage.style.height = LH * scale + 'px';
   world.style.transform = `scale(${scale})`;
   document.documentElement.style.setProperty('--s', String(scale));
@@ -941,7 +951,7 @@ let shiftPreview = null;
 function shiftPad(d) {
   padShift = Math.max(-240, Math.min(160, padShift + d));
   try { localStorage.setItem('drMasakiPadShift', String(padShift)); } catch (err) {}
-  placePad();
+  fit();
   $('pad').hidden = false; $('pad').style.zIndex = '20'; $('pad').style.opacity = '.85';
   clearTimeout(shiftPreview);
   shiftPreview = setTimeout(() => { $('pad').style.zIndex = ''; $('pad').style.opacity = ''; updatePad(); }, 1500);
