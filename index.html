@@ -104,14 +104,14 @@
   #dpad .r{left:66.66%;top:33.33%;border-radius:0 8px 8px 0}
   #dpad .d{left:33.33%;top:66.66%;border-radius:0 0 8px 8px}
   #dpad .c{left:33.33%;top:33.33%;border:none;background:rgba(255,255,255,.12)}
-  #rot{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 38);
+  #rot{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 14);
     width:calc(var(--u) * 80);height:calc(var(--u) * 80);border-radius:50%;pointer-events:auto;touch-action:none;
     background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.4);color:rgba(255,255,255,.85);
     display:flex;align-items:center;justify-content:center;font-size:calc(var(--u) * 34)}
   #rot.on{background:rgba(124,242,200,.45)}
-  #pauseBtn{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 178);
+  #pauseBtn{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 118);
     width:calc(var(--u) * 64);height:calc(var(--u) * 50);padding:0;pointer-events:auto;touch-action:none;font-size:calc(var(--u) * 20);border-radius:12px;opacity:.9}
-  #musicBtn{position:absolute;right:calc(max(14px,env(safe-area-inset-right,0px)) + var(--u) * 72);bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 178);
+  #musicBtn{position:absolute;right:calc(max(14px,env(safe-area-inset-right,0px)) + var(--u) * 72);bottom:calc(env(safe-area-inset-bottom,0px) + 6px + var(--u) * 118);
     width:calc(var(--u) * 56);height:calc(var(--u) * 50);padding:0;pointer-events:auto;touch-action:none;font-size:calc(var(--u) * 20);border-radius:12px;opacity:.9}
   #musicBtn.off{opacity:.45;text-decoration:line-through}
 
@@ -719,9 +719,13 @@ function draw() {
 
 /* ================= 画面サイズ ================= */
 let scale = 1;
+const PAD_H = 212;
+function padShown() { return padMode === 'on' || (padMode === 'auto' && touchMode); }
 function fit() {
   const sh = $('shell');
-  scale = Math.max(0.3, Math.min(sh.clientWidth / LW, sh.clientHeight / LH));
+  // 画面ボタンを出すときは、その分（ゲームの単位で PAD_H）を下にあけて、ボタンが瓶やウイルスに重ならないようにする
+  const R = padShown() ? PAD_H : 0;
+  scale = Math.max(0.3, Math.min(sh.clientWidth / LW, sh.clientHeight / (LH + R)));
   stage.style.width = LW * scale + 'px'; stage.style.height = LH * scale + 'px';
   world.style.transform = `scale(${scale})`;
   document.documentElement.style.setProperty('--s', String(scale));
@@ -936,7 +940,9 @@ function shiftPad(d) {
 const markTouch = () => { if (!touchMode) { touchMode = true; updatePad(); } };
 addEventListener('touchstart', markTouch, { passive: true, capture: true });
 addEventListener('pointerdown', e => { if (e.pointerType === 'touch') markTouch(); }, { capture: true });
+let lastShown = null;
 function updatePad() {
+  if (padShown() !== lastShown) { lastShown = padShown(); fit(); }
   const any = !$('menu').hidden || !$('msg').hidden || !$('rec').hidden;
   const show = padMode === 'on' || (padMode === 'auto' && touchMode);
   $('pad').hidden = !show || any;
