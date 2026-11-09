@@ -121,6 +121,9 @@
   /* ♪ と II はゲーム画面の中、LIFE の下（ゲームの座標で置く） */
   .gbtn{position:absolute;top:376px;width:44px;height:36px;padding:0;font-size:17px;border-radius:10px;touch-action:none;z-index:2}
   #musicBtn{left:258px}#pauseBtn{left:306px}
+  /* 横向き：操作ボタンは左右のはしの、たての真ん中より少し下 */
+  body.land #dpad{bottom:calc(30% - var(--u) * 126)}
+  body.land #rot{bottom:calc(30% - var(--u) * 40);right:max(28px,env(safe-area-inset-right,0px));width:calc(var(--u) * 96);height:calc(var(--u) * 96)}
   #musicBtn.off{opacity:.45;text-decoration:line-through}
 
   #msgImg{width:210px;height:auto;max-width:100%;transform-origin:50% 90%;animation:plop .7s cubic-bezier(.2,1.4,.4,1) both}
@@ -738,14 +741,24 @@ function fit() {
   // 横は画面いっぱい（スマホ）。縦に余った分はゲーム画面をのばして使い、
   // 画面ボタンを出すときは、ます（CS）を小さくして瓶の下に十字キーの場所をつくる
   const vw = sh.clientWidth, vh = sh.clientHeight;
-  scale = Math.max(0.3, Math.min(vw / LW, vh / 600));
-  const pu = Math.min(scale, 1.25); document.documentElement.style.setProperty('--pu', pu + 'px');
+  // 横向き：十字キーを左はし、回転ボタンを右はしに置き、ゲーム画面はまん中（下にすき間はいらない）
+  const land = vw > vh * 1.1 && padShown();
+  document.body.classList.toggle('land', land);
+  let pu;
+  if (land) {
+    pu = Math.max(0.85, Math.min(1.25, vh / 600));
+    scale = Math.max(0.3, Math.min((vw - 2 * 236 * pu) / LW, vh / 600));
+  } else {
+    scale = Math.max(0.3, Math.min(vw / LW, vh / 600));
+    pu = Math.min(scale, 1.25);
+  }
+  document.documentElement.style.setProperty('--pu', pu + 'px');
   LH = Math.max(600, Math.floor(vh / scale));
-  const padW = padShown() ? (PAD_H * pu - padShift) / scale : 0;
+  const padW = padShown() && !land ? (PAD_H * pu - padShift) / scale : 0;
   CS = Math.max(14, Math.min(28, Math.floor((LH - padW - BY - 14) / H)));
   BX = Math.round((246 - W * CS) / 2);
   SPAWN_C[0] = BX + 4 * CS; SPAWN_C[1] = BY + CS / 2;
-  showLens = !padShown() || 536 <= LH - (100 * pu - padShift) / scale;
+  showLens = !padShown() || land || 536 <= LH - (100 * pu - padShift) / scale;
   world.style.height = LH + 'px';
   stage.style.width = LW * scale + 'px'; stage.style.height = LH * scale + 'px';
   world.style.transform = `scale(${scale})`;
