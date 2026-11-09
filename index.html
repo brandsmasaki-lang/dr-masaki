@@ -121,9 +121,9 @@
   /* ♪ と II はゲーム画面の中、LIFE の下（ゲームの座標で置く） */
   .gbtn{position:absolute;top:376px;width:44px;height:36px;padding:0;font-size:17px;border-radius:10px;touch-action:none;z-index:2}
   #musicBtn{left:258px}#pauseBtn{left:306px}
-  /* 横向き：操作ボタンは左右のはしの、たての真ん中より少し下 */
-  body.land #dpad{bottom:calc(30% - var(--u) * 126)}
-  body.land #rot{bottom:calc(30% - var(--u) * 40);right:max(20px,env(safe-area-inset-right,0px));width:calc(var(--u) * 92);height:calc(var(--u) * 92)}
+  /* 横向き：操作ボタンは左右のはしの、たての真ん中 */
+  body.land #dpad{bottom:calc(50% - var(--u) * 126)}
+  body.land #rot{bottom:calc(50% - var(--u) * 46);right:max(20px,env(safe-area-inset-right,0px));width:calc(var(--u) * 92);height:calc(var(--u) * 92)}
   #musicBtn.off{opacity:.45;text-decoration:line-through}
 
   #msgImg{width:210px;height:auto;max-width:100%;transform-origin:50% 90%;animation:plop .7s cubic-bezier(.2,1.4,.4,1) both}
