@@ -143,8 +143,13 @@
           <div class="lbl">スピード</div>
           <div class="row" id="spd"><button data-s="0" class="sel">LOW</button><button data-s="1">MED</button><button data-s="2">HI</button></div>
         </div>
+        <div>
+          <div class="lbl">BGM</div>
+          <div class="row" id="bgmSel"><button data-b="0">オフ</button><button data-b="1">ノリノリ</button><button data-b="2">まったり</button></div>
+        </div>
         <button class="big" id="startBtn">スタート</button>
         <div class="row"><button id="recBtn">記録を見る</button><button id="padBtn">画面ボタン：自動</button></div>
+        <div class="row"><button id="seBtn">効果音：オン</button></div>
         <div>
           <div class="lbl">画面ボタンの位置</div>
           <div class="row"><button class="step wide" id="padUp" aria-label="画面ボタンを上へ">▲ 上へ</button><button class="step wide" id="padDown" aria-label="画面ボタンを下へ">▼ 下へ</button></div>
@@ -383,6 +388,7 @@ function resolve() {
     }
     if (run) { run.v += v; run.sc = score; run.mc = Math.max(run.mc, chainV); }
     session.v += v;
+    se(chainStep >= 2 ? 'chain' : 'pop', chainStep);
     state = 'clearing'; timer = 20;
     return;
   }
@@ -417,8 +423,9 @@ function settled() {
     if (run) { run.st++; run.cl.push(level); run.lv = level; }
     session.st++; session.lv = Math.max(session.lv, level);
     const got = saveRun(false);
+    bgmPlay('clear');
     showMsg('ステージクリア！', `レベル ${level} クリア<br>スコア ${score.toLocaleString()}`,
-      [['つぎのレベルへ', () => { level = Math.min(level + 1, MAX_LEVEL); hideAll(); startLevel(); }, true]], true);
+      [['つぎのレベルへ', () => { level = Math.min(level + 1, MAX_LEVEL); hideAll(); startLevel(); bgmPlay('play'); }, true]], true);
     announce(got);
     return;
   }
@@ -432,12 +439,13 @@ function topOut() {
   lives--;
   if (run) run.miss = (run.miss || 0) + 1;
   if (lives <= 0) { gameOver(); return; }
-  state = 'miss';
+  state = 'miss'; bgmPlay('miss');
   flushRun();
   showMsg('ミス！', `のこり ${lives}機<br>レベル ${level} をもう一度`,
-    [['リトライ', () => { hideAll(); startLevel(); }, true], ['あきらめる', () => { lives = 0; gameOver(); }]]);
+    [['リトライ', () => { hideAll(); startLevel(); bgmPlay('play'); }, true], ['あきらめる', () => { lives = 0; gameOver(); }]]);
 }
 function gameOver() {
+  if (state !== 'over') bgmPlay('over');
   state = 'over';
   const got = saveRun(true);
   const best = bestScore();
@@ -456,6 +464,7 @@ function newGame() {
   session.g++;
   try { localStorage.setItem('drMasakiPrefs', JSON.stringify({ level, speed: speedSel })); } catch (e) {}
   startLevel();
+  BGM.cur = null; bgmPlay('play');
 }
 
 /* ================= 毎フレームの更新 ================= */
@@ -762,14 +771,15 @@ function renderTopRec() {
 function toMenu() {
   hideAll(); state = 'title'; grid = emptyGrid(); cur = null; flying = null; next = null; score = 0; run = null;
   $('menu').hidden = false; renderTopRec(); updatePad(); $('startBtn').focus();
+  if (typeof bgmPlay === 'function') bgmPlay('title');
 }
 function pause() {
   if (!['play', 'throw', 'clearing', 'falling'].includes(state)) return;
-  prevState = state; state = 'paused';
+  prevState = state; state = 'paused'; bgmStop();
   for (const k in held) held[k] = false;
   showMsg('一時停止', '', [['つづける', resume, true], ['やめる', quitRun]]);
 }
-function resume() { hideAll(); state = prevState || 'play'; }
+function resume() { hideAll(); state = prevState || 'play'; bgmPlay('play'); }
 function quitRun() { saveRun(true); toMenu(); }
 
 // レベルは「数字を入力」「−／＋」「スライダー」のどれでも選べて、3つは常に同じ値になる
@@ -1158,6 +1168,102 @@ updatePad();
 requestAnimationFrame(loop);
 renderTopRec();
 initStore();
+/* ================= BGM・効果音（オリジナル曲。音のファイルは使わず、ブラウザがその場で演奏する） =================
+   曲は「音名:長さ」（長さは16分音符いくつ分、省略で2）、r は休み、ドラムは k/s/h。
+   プレイ中の曲は「ノリノリ」「まったり」から選べる。ジングルは1回鳴らしたら次の曲へ */
+const SONGS = {
+  title: { bpm: 132, lead: 'E5 G5 A5 G5 E5 C5 D5:4 E5 D5 C5 A4 G4:6 r G4 A4 C5 D5 E5 G5 A5:4 G5 E5 D5 E5 C5:6 r',
+    bass: 'C3:4 G3:4 C3:4 G3:4 A2:4 E3:4 A2:4 E3:4 F2:4 C3:4 F2:4 C3:4 G2:4 D3:4 C3:8', drum: 'k:4 s:4 k:4 s:4' },
+  play1: { bpm: 150, lead: 'D5 r D5 F5 r A5 G5 F5 E5:4 C5 C5 D5:6 r D5 r D5 F5 r A5 C6 A5 G5:4 F5 E5 F5:6 r A#4 D5 F5 A#5:4 A5 G5 F5 C5 E5 G5 C6:4 A#5 A5 G5 A5 G5 F5 E5 D5 E5 F5 A5 D5:4 A4:4 D5:4 r:4',
+    bass: 'D2 D3 r D3 D2 D3 r D3 C3 C4 r C4 C3 C4 r C4 D2 D3 r D3 D2 D3 r D3 C3 C4 r C4 C3 C4 r C4 A#2 A#3 r A#3 A#2 A#3 r A#3 C3 C4 r C4 C3 C4 r C4 A2 A3 r A3 A2 A3 r A3 D2 D3 r D3 D2:4 r:4',
+    drum: 'k h s h k k s h' },
+  play2: { bpm: 104, soft: true, lead: 'A4:3 C5:1 F5:4 E5 C5 A4:4 G4:3 A#4:1 D5:4 C5:8 A4:3 C5:1 F5:4 G5 A5 G5:4 F5 E5 D5 E5 F5:8 D5:3 F5:1 A#5:4 A5 G5 F5:4 C5:3 E5:1 G5:4 F5 E5 C5:4 D5 C5 A#4 A4 G4:4 C5:4 F4:12 r:4',
+    bass: 'F2:8 C3:8 A#2:8 C3:8 F2:8 A2:8 A#2:8 F2:8 A#2:8 D3:8 C3:8 G2:8 G2:8 C3:8 F2:16', drum: 'k:4 h:4 h:4 h:4' },
+  clear: { bpm: 150, once: true, lead: 'C5:1 E5:1 G5:1 C6:1 r G5 C6:8', bass: 'C3:4 E3:4 G3 C3:6', drum: 's:1 s:1 s:1 s:1 r k:8 r' },
+  miss: { bpm: 140, once: true, soft: true, lead: 'G4 F#4 F4 E4:8', bass: 'C3:6 B2:8' },
+  over: { bpm: 120, once: true, soft: true, lead: 'C5:3 G4:1 E4:3 G4:1 F4 E4 D4 C4:10', bass: 'C3:8 G2:8 C2:8' }
+};
+const NOTE_I = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+function parseTrack(str) {
+  return str.trim().split(/\s+/).map(t => {
+    const [n, l] = t.split(':'); const len = +(l || 2);
+    if (n === 'r') return { f: 0, len };
+    if (/^[ksh]$/.test(n)) return { d: n, len };
+    const m = /^([A-G]#?)(\d)$/.exec(n); return { f: 440 * Math.pow(2, (NOTE_I[m[1]] + 12 * (+m[2] + 1) - 69) / 12), len };
+  });
+}
+Object.values(SONGS).forEach(s => ['lead', 'bass', 'drum'].forEach(k => { if (s[k]) s[k] = parseTrack(s[k]); }));
+const AUDIO_KEY = 'drMasakiAudio';
+const BGM = { ctx: null, sel: 1, se: true, cur: null, next: null, timer: null, ch: [], vol: null, noise: null };
+try { const a = JSON.parse(localStorage.getItem(AUDIO_KEY) || '{}'); if (a.sel != null) BGM.sel = a.sel; if (a.se != null) BGM.se = a.se; } catch (e) {}
+function audioSave() { try { localStorage.setItem(AUDIO_KEY, JSON.stringify({ sel: BGM.sel, se: BGM.se })); } catch (e) {} }
+function bgmCtx() {
+  if (BGM.ctx) return BGM.ctx; const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+  const c = new AC(); BGM.ctx = c;
+  const nb = c.createBuffer(1, c.sampleRate * 0.3, c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; BGM.noise = nb;
+  return c;
+}
+// 曲ごとに音量つまみを作る。曲を変えると前の曲の残りの音は小さくなって消える
+function bgmFade() { const o = BGM.vol, c = BGM.ctx; if (!o || !c) return; const t = c.currentTime; o.gain.cancelScheduledValues(t); o.gain.setValueAtTime(o.gain.value, t); o.gain.linearRampToValueAtTime(0, t + 0.08); setTimeout(() => { try { o.disconnect(); } catch (e) {} }, 400); BGM.vol = null; }
+function bgmFresh(c) { bgmFade(); BGM.vol = c.createGain(); BGM.vol.gain.value = 0.15; BGM.vol.connect(c.destination); }
+function bgmNote(kind, ev, t, dur, soft) {
+  const c = BGM.ctx; if (!BGM.vol) return; const g = c.createGain(); g.connect(BGM.vol);
+  if (ev.d) {
+    const src = c.createBufferSource(); src.buffer = BGM.noise; const f = c.createBiquadFilter();
+    const v = (soft ? 0.5 : 1) * (ev.d === 'k' ? 0.9 : ev.d === 's' ? 0.5 : 0.16), len = ev.d === 'k' ? 0.09 : ev.d === 's' ? 0.12 : 0.04;
+    f.type = ev.d === 'k' ? 'lowpass' : ev.d === 's' ? 'bandpass' : 'highpass'; f.frequency.value = ev.d === 'k' ? 160 : ev.d === 's' ? 1800 : 7000;
+    src.connect(f); f.connect(g); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + len); src.start(t); src.stop(t + len + 0.02); return;
+  }
+  if (!ev.f) return;
+  const o = c.createOscillator(); o.type = kind === 'lead' ? (soft ? 'triangle' : 'square') : 'triangle'; o.frequency.value = ev.f; o.connect(g);
+  const v = kind === 'lead' ? (soft ? 0.5 : 0.28) : 0.55, end = t + Math.max(0.05, dur * 0.9);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.01); g.gain.setValueAtTime(v * 0.75, t + Math.min(0.08, dur * 0.4)); g.gain.linearRampToValueAtTime(0.0001, end);
+  o.start(t); o.stop(end + 0.02);
+}
+function bgmTick() {
+  const c = BGM.ctx, s = SONGS[BGM.cur]; if (!c || !s) return; const step = 60 / s.bpm / 4, ahead = c.currentTime + 0.25; let allDone = true;
+  BGM.ch.forEach(ch => {
+    while (!ch.done && ch.t < ahead) { const ev = ch.tr[ch.i]; bgmNote(ch.k, ev, ch.t, ev.len * step, s.soft); ch.t += ev.len * step; ch.i++; if (ch.i >= ch.tr.length) { if (s.once) ch.done = true; else ch.i = 0; } }
+    if (!ch.done || ch.t > c.currentTime) allDone = false;
+  });
+  if (s.once && allDone) { const n = BGM.next; BGM.next = null; BGM.cur = null; if (n) bgmPlay(n); }
+}
+// 場面の曲："title" "play"（選んだ曲）"clear" "miss" "over"
+function bgmPlay(name, after) {
+  if (name === 'play') name = BGM.sel === 2 ? 'play2' : 'play1';
+  const s = SONGS[name]; if (!s) return;
+  if (s.once) BGM.next = after || null;
+  else if (BGM.cur && SONGS[BGM.cur].once) { BGM.next = name; return; }
+  else if (BGM.cur === name) return;
+  if (!BGM.sel) { BGM.cur = s.once ? null : name; return; }
+  const c = bgmCtx(); if (!c) return; if (c.state === 'suspended') c.resume().catch(() => {});
+  bgmFresh(c); BGM.cur = name; const t0 = c.currentTime + 0.06;
+  BGM.ch = ['lead', 'bass', 'drum'].filter(k => s[k]).map(k => ({ k, tr: s[k], i: 0, t: t0, done: false }));
+  if (!BGM.timer) BGM.timer = setInterval(bgmTick, 40); bgmTick();
+}
+function bgmStop() { BGM.cur = null; BGM.next = null; BGM.ch = []; bgmFade(); }
+function bgmScene() { return state === 'title' ? 'title' : ['play', 'throw', 'clearing', 'falling'].includes(state) ? 'play' : null; }
+// 効果音：消したとき「ポッ」、連鎖したら「ピロン♪」が連鎖ごとに高くなる
+function se(kind, n) {
+  if (!BGM.se) return; const c = bgmCtx(); if (!c) return; if (c.state === 'suspended') c.resume().catch(() => {});
+  const out = c.createGain(); out.gain.value = 0.22; out.connect(c.destination); const t = c.currentTime + 0.01;
+  const tone = (f, at, len, type, v) => { const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f; o.connect(g); g.connect(out); g.gain.setValueAtTime(v, at); g.gain.exponentialRampToValueAtTime(0.001, at + len); o.start(at); o.stop(at + len + 0.02); };
+  if (kind === 'pop') { const o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(1400, t + 0.06); o.connect(g); g.connect(out); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.09); o.start(t); o.stop(t + 0.1); }
+  if (kind === 'chain') { const b = 660 * Math.pow(2, Math.min(n - 2, 8) * 2 / 12); tone(b, t, 0.1, 'square', 0.3); tone(b * 1.5, t + 0.07, 0.22, 'square', 0.3); tone(b * 2, t + 0.07, 0.22, 'triangle', 0.25); }
+}
+function setBgmSel(v) {
+  BGM.sel = v; audioSave();
+  document.querySelectorAll('#bgmSel button').forEach(x => x.classList.toggle('sel', +x.dataset.b === v));
+  if (!v) bgmStop(); else { const sc = bgmScene(); if (sc) { if (sc === 'play') BGM.cur = null; bgmPlay(sc === 'title' ? 'title' : 'play'); } else if (state === 'title') bgmPlay('title'); }
+}
+function setSe(on) { BGM.se = on; audioSave(); $('seBtn').textContent = on ? '効果音：オン' : '効果音：オフ'; $('seBtn').classList.toggle('sel', on); }
+document.querySelectorAll('#bgmSel button').forEach(b => b.addEventListener('click', () => { setBgmSel(+b.dataset.b); if (state === 'title' && BGM.sel) { BGM.cur = null; bgmPlay('title'); } }));
+$('seBtn').addEventListener('click', () => { setSe(!BGM.se); if (BGM.se) se('chain', 2); });
+setBgmSel(BGM.sel); setSe(BGM.se);
+// スマホは画面をさわるまで音が出せないので、最初のタッチで鳴らしはじめる
+function bgmWake() { if (!BGM.sel && !BGM.se) return; const c = bgmCtx(); if (!c) return; if (c.state !== 'running') c.resume().catch(() => {}); if (BGM.sel && !BGM.cur) { const sc = bgmScene(); if (sc) bgmPlay(sc); } }
+['pointerdown', 'touchend', 'keydown'].forEach(t => document.addEventListener(t, bgmWake, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!BGM.ctx) return; if (document.hidden) BGM.ctx.suspend().catch(() => {}); else BGM.ctx.resume().catch(() => {}); });
 })();
 </script>
 
