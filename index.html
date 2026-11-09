@@ -122,8 +122,8 @@
   .gbtn{position:absolute;top:376px;width:44px;height:36px;padding:0;font-size:17px;border-radius:10px;touch-action:none;z-index:2}
   #musicBtn{left:258px}#pauseBtn{left:306px}
   /* 横向き：操作ボタンは左右のはしの、たての真ん中 */
-  body.land #dpad{bottom:calc(50% - var(--u) * 126)}
-  body.land #rot{bottom:calc(50% - var(--u) * 46);right:max(20px,env(safe-area-inset-right,0px));width:calc(var(--u) * 92);height:calc(var(--u) * 92)}
+  body.land #dpad{top:calc(50% - var(--u) * 126);bottom:auto}
+  body.land #rot{top:calc(50% - var(--u) * 46);bottom:auto;right:max(20px,env(safe-area-inset-right,0px));width:calc(var(--u) * 92);height:calc(var(--u) * 92)}
   #musicBtn.off{opacity:.45;text-decoration:line-through}
 
   #msgImg{width:210px;height:auto;max-width:100%;transform-origin:50% 90%;animation:plop .7s cubic-bezier(.2,1.4,.4,1) both}
@@ -749,7 +749,7 @@ function fit() {
   const vw = sh.clientWidth, vh = sh.clientHeight;
   // 横向き：十字キーを左はし、回転ボタンを右はしに置き、ゲーム画面はまん中（下にすき間はいらない）
   const land = vw > vh * 1.1 && padShown();
-  document.body.classList.toggle('land', land);
+  document.body.classList.toggle('land', land); isLand = land;
   let pu;
   if (land) {
     // ボタンは小さめ、ゲーム画面は横長の並べ方（瓶が左、ロゴ・スコア・ドクター・LEVEL などが右）
@@ -784,8 +784,11 @@ addEventListener('resize', fit);
 addEventListener('orientationchange', () => setTimeout(fit, 300));
 // 操作パネルの高さを「実際に見えている画面の高さ」に合わせる。
 // ホーム画面から起動したiPhoneでは、画面の下端より上で止まることがあるので画面全体の高さを使う
+let isLand = false;
 function placePad() {
   const pad = $('pad');
+  // 横向き：見えている画面の高さだけを使う（高さ調整は使わない）。ボタンはその真ん中
+  if (isLand) { pad.style.height = innerHeight + 'px'; return; }
   const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   const vv = window.visualViewport;
   const base = vv ? vv.height + vv.offsetTop : innerHeight;
@@ -793,7 +796,7 @@ function placePad() {
   const scrH = innerWidth > innerHeight ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
   const h = standalone ? Math.min(Math.max(base, scrH - 60), scrH) : base;
   // 「画面ボタンの高さ」の調整は縦向きだけ。横向きはボタンが画面の外に出ないよう、調整なしで置く
-  pad.style.height = Math.round(h + (document.body.classList.contains('land') ? 0 : padShift)) + 'px';
+  pad.style.height = Math.round(h + padShift) + 'px';
 }
 // ボタンの上下位置の手動調整（プラスで下へ）。端末によって画面の下端の扱いが違うため
 let padShift = 0;
